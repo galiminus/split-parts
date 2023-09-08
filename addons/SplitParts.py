@@ -1,29 +1,26 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 ######################################################################################################
-# A simple add-on to auto cut in two and mirror an object                                            #
-# Actually partially uncommented (see further version)                                               #
-# Author: Lapineige, Bookyakuno                                                                      #
+# A simple to split an object into different parts                                                   #
+# Author: Camptosaurus                                                                               #
+# Based on the auto-mirror plugin by Lapineige and Bookyakuno                                        #
+# https://github.com/blender/blender-addons/blob/main/mesh_auto_mirror.py                            #
 ######################################################################################################
-# 2.8 update by Bookyakuno, meta-androcto
 
 bl_info = {
     "name": "Split Parts",
     "description": "Easily cut an object in multiple parts",
     "author": "Camptosaurus",
-    "version": (2, 5, 4),
+    "version": (0, 0, 1),
     "blender": (2, 80, 0),
     "location": "View 3D > Sidebar > Edit Tab > SplitParts (panel)",
     "warning": "",
     "category": "Mesh",
 }
 
-import time
-
 import bpy
 from mathutils import Vector
 
-import bmesh
 import bpy
 from bpy_extras import view3d_utils
 from bpy.types import (
@@ -34,7 +31,6 @@ from bpy.types import (
 from bpy.props import (
     BoolVectorProperty,
     PointerProperty,
-    FloatProperty
 )
 
 class SplitParts(bpy.types.Operator):
