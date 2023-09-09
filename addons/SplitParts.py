@@ -18,6 +18,9 @@ bl_info = {
     "category": "Mesh",
 }
 
+import os
+import re
+
 import bpy
 from mathutils import Vector
 
@@ -31,27 +34,20 @@ from bpy.types import (
 from bpy.props import (
     BoolVectorProperty,
     PointerProperty,
+    StringProperty,
+    BoolProperty
 )
 
 class SplitParts(bpy.types.Operator):
     """ Automatically cut an object along an axis """
     bl_idname = "object.splitparts"
-    bl_label = "SplitParts"
+    bl_label = "Split parts"
     bl_options = {'REGISTER'}
 
     @classmethod
     def poll(cls, context):
         obj = context.object
         return obj and obj.type == "MESH"
-
-    def draw(self, context):
-        splitparts = context.scene.splitparts
-
-        layout = self.layout
-        if bpy.context.object and bpy.context.object.type == 'MESH':
-            layout.prop(splitparts, "axis", text = "Axis")
-        else:
-            layout.label(icon = "ERROR", text = "No mesh selected")
 
     def get_local_axis_vector(self, object, X, Y, Z):
         current_mode = bpy.context.object.mode
@@ -92,7 +88,6 @@ class SplitParts(bpy.types.Operator):
 
     def cut_along_axis(self, objects, X, Y, Z):
         for index, object in enumerate(list(objects)):
-
             inner, outer = self.get_inner_and_outer(object)
 
             inner.name = f"Part {index} - {X}-{Y}-{Z} - Inner"
@@ -127,6 +122,40 @@ class SplitParts(bpy.types.Operator):
                 )
 
                 bpy.ops.mesh.normals_make_consistent(inside=False)
+
+    def export_to_stl(self, object, export_path):
+        bpy.ops.object.select_all(action = 'DESELECT')
+        object.select_set(True)
+        bpy.context.view_layer.objects.active = object
+
+        export_path = bpy.path.abspath(export_path)
+
+        # first ensure the path is created
+        if export_path:
+            # this can fail with strange errors,
+            # if the dir can't be made then we get an error later.
+            try:
+                os.makedirs(export_path, exist_ok=True)
+            except:
+                import traceback
+                traceback.print_exc()
+
+        # Create name 'export_path/blendname-objname'
+        # add the filename component
+        name = os.path.basename(bpy.data.filepath)
+        name = os.path.splitext(name)[0]
+        name += "-" + re.sub(r'[\\/:*?"<>|]', "", object.name)
+
+        filepath = os.path.join(export_path, name)
+
+        filepath = bpy.path.ensure_ext(filepath, ".stl")
+        bpy.ops.export_mesh.stl(
+            filepath=filepath,
+            ascii=False,
+            use_mesh_modifiers=True,
+            use_selection=True,
+            global_scale=1.0,
+        )
 
     def execute(self, context):
         splitparts = context.scene.splitparts
@@ -164,6 +193,15 @@ class SplitParts(bpy.types.Operator):
         if Z:
             self.cut_along_axis(collection.objects, 0, 0, 1)
 
+        bpy.ops.object.mode_set(mode = "OBJECT")
+
+        if splitparts.export:
+            for object in collection.objects:
+                self.export_to_stl(
+                    object = object,
+                    export_path = splitparts.export_path
+                )
+
         return {'FINISHED'}
 
 class VIEW3D_PT_BisectParts(Panel):
@@ -179,8 +217,12 @@ class VIEW3D_PT_BisectParts(Panel):
         layout = self.layout
 
         if bpy.context.object and bpy.context.object.type == 'MESH':
-            layout.operator("object.splitparts")
             layout.prop(splitparts, "axis", text = "Axis")
+            layout.prop(splitparts, "export", text = "Export to STL")
+            if splitparts.export:
+                layout.prop(splitparts, "export_path", text = "Path")
+
+            layout.operator("object.splitparts")
         else:
             layout.label(icon="ERROR", text = "No mesh selected")
 
@@ -191,6 +233,19 @@ class SplitPartsProps(PropertyGroup):
         size=3,
         description="Axis to cut",
         subtype="XYZ"
+    )
+
+    export: BoolProperty(
+        name="Export to STL",
+        description="Export generated parts to STL"
+    )
+
+    export_path: StringProperty(
+        name="Export Directory",
+        description="Path to directory where the files are created",
+        default="//",
+        maxlen=1024,
+        subtype="DIR_PATH",
     )
 
 # define classes for registration
