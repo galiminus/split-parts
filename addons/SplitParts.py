@@ -202,6 +202,11 @@ class SplitParts(bpy.types.Operator):
                     export_path = splitparts.export_path
                 )
 
+        if splitparts.cleanup_collection:
+            for object in collection.objects:
+                bpy.data.objects.remove(object, do_unlink=True)
+            bpy.data.collections.remove(collection)
+
         return {'FINISHED'}
 
 class VIEW3D_PT_BisectParts(Panel):
@@ -221,6 +226,7 @@ class VIEW3D_PT_BisectParts(Panel):
             layout.prop(splitparts, "export", text = "Export to STL")
             if splitparts.export:
                 layout.prop(splitparts, "export_path", text = "Path")
+                layout.prop(splitparts, "cleanup_collection", text = "Remove generated objects")
 
             layout.operator("object.splitparts")
         else:
@@ -246,6 +252,11 @@ class SplitPartsProps(PropertyGroup):
         default="//",
         maxlen=1024,
         subtype="DIR_PATH",
+    )
+
+    cleanup_collection: BoolProperty(
+        name="Cleanup collection",
+        description="Remove the generated collection and only keep exported STL files"
     )
 
 # define classes for registration
